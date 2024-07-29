@@ -1,0 +1,51 @@
+import requests
+import subprocess
+import time
+from requests import Session
+
+# Configure Tor proxy settings
+TOR_PROXY = 'socks5h://127.0.0.1:9050'
+
+def start_tor_service():
+    try:
+        subprocess.run(["sudo", "systemctl", "start", "tor"], check=True)
+        print("Starting Tor...")
+        time.sleep(10)  # Wait for Tor to start
+    except subprocess.CalledProcessError:
+        print("Failed to start Tor service. Ensure Tor is installed and configured.")
+        return False
+    return True
+
+def check_tor_connection():
+    session = Session()
+    session.proxies = {'http': TOR_PROXY, 'https': TOR_PROXY}
+    try:
+        response = session.get("https://check.torproject.org/api/ip", timeout=10)
+        print("Raw response:", response.text)  # Print the raw response
+        if response.status_code == 200:
+            data = response.json()
+            print("JSON data:", data)  # Print the parsed JSON data
+            if data.get("IsTor"):
+                return True, data.get("IP")  # Update to use "IP" instead of "IPAddress"
+        return False, None
+    except requests.RequestException as e:
+        print(f"Error checking Tor connection: {e}")
+        return False, None
+
+def main():
+    print("Connecting to Tor...")
+    
+    if not start_tor_service():
+        return
+    
+    success, ip_address = check_tor_connection()
+    
+    if success:
+        print(f"Success! Your Tor connection is secure.")
+        print(f"Your Tor IP address is: {ip_address}")
+        print("Happy travels!")
+    else:
+        print("Failed to connect to Tor. Please check your configuration.")
+
+if __name__ == "__main__":
+    main()
